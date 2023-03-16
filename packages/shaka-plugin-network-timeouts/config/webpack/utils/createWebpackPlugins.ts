@@ -1,7 +1,7 @@
-import * as CopyWebpackPlugin from 'copy-webpack-plugin'
-import * as HtmlWebpackPlugin from 'html-webpack-plugin'
-import * as path from 'path'
-import * as webpack from 'webpack'
+import CopyWebpackPlugin from 'copy-webpack-plugin'
+import HtmlWebpackPlugin from 'html-webpack-plugin'
+import path from 'path'
+import webpack from 'webpack'
 import { EnvironmentPlugin, WebpackPluginInstance } from 'webpack'
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer'
 
