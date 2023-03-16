@@ -18,6 +18,9 @@
   },
   "homepage": "https://github.com/juliantellez/shaka-extensions#readme",
   "devDependencies": {
+    "@commitlint/cli": "^17.4.4",
+    "@commitlint/config-conventional": "^17.4.4",
+    "husky": "^8.0.3",
     "lerna": "^6.5.1"
   },
   "workspaces": [
