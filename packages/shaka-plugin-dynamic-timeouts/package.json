@@ -65,6 +65,6 @@
     "react-dom": "^18.2.0",
     "shaka-player": "^4.3.5"
   },
-  "name": "shaka-plugin-network-timeouts",
+  "name": "shaka-plugin-dynamic-timeouts",
   "version": "0.0.0"
 }
