@@ -17,6 +17,7 @@ const PlayerUi: React.FC<PlayerProps> = ({src}) => {
         
         const player = new shaka.Player(videoContainerRef.current);
         const plugin = new DynamicTimeouts(player, {
+            enable: true,
             bufferingGoal: 10,
             pollingInterval: 1000,
             bufferLow: {

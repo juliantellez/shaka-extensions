@@ -24,7 +24,7 @@ class BehaviourSubject<Data> implements BehaviourSubectObservable<Data> {
 
         return () => {
             const index = this.subscriptions.findIndex(subs => subs === subscriber)
-            if(index) {
+            if(index >= 0) {
                 this.subscriptions.splice(index, 1);
             }
         }

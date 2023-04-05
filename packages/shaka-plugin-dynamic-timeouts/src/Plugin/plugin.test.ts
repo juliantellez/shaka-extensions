@@ -123,4 +123,43 @@ describe("Plugin", () => {
             state: PluginState.BUFFER_FULL,
         });
     })
+
+    it("should unsubscribe subscriptions on destroy", () => {
+        const player: shaka.Player = {
+            configure: jest.fn(),
+            // @ts-expect-error partial implementation
+            getConfiguration: () => ({streaming: {}}),
+            // @ts-expect-error partial implementation
+            getMediaElement: () => ({
+                buffered: {
+                    length: 1,
+                    start: () => 0,
+                    end: () => 20,
+                },
+                currentTime: 10,
+            }),
+        };
+
+            // @ts-expect-error partial implementation
+        const config: PluginConfig = {
+            enable: true,
+            pollingInterval: 100,
+            bufferingGoal: 10,
+            bufferFull: {
+                timeout: 10,
+                stallTimeout: 10,
+            },
+        };
+
+        const plugin = new DynamicTimeouts(player, config)
+        const subscription = jest.fn();
+
+        plugin.subscribe(subscription);
+        plugin.subscribe(console.log);
+        plugin.destroy()
+
+        jest.advanceTimersByTime(config.pollingInterval);
+
+        expect(subscription).toHaveBeenCalledTimes(0);
+    })
 })

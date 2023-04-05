@@ -38,7 +38,7 @@ type Subscriber = (event: PluginEvent) => void
 
 interface PluginApi {
     getValue(): PluginEvent
-    subscribe(subscriber: Subscriber): Subscription
+    subscribe(subscriber: Subscriber): void
     destroy(): void
 }
 
@@ -62,8 +62,9 @@ class DynamicTimeouts implements PluginApi {
         return this.state$.getValue()
     }
 
-    public subscribe = (subscriber: Subscriber): Subscription => {
-        return this.state$.subscribe(subscriber)
+    public subscribe = (subscriber: Subscriber): void => {
+        const subscription = this.state$.subscribe(subscriber)
+        this.subscriptions.push(subscription)
     }
 
     private init = () => {
@@ -73,6 +74,7 @@ class DynamicTimeouts implements PluginApi {
 
     public destroy = () => {
         this.subscriptions.forEach(unsubscribe => unsubscribe())
+        this.subscriptions = []
     }
 
     private createSubscriptions = (): Array<Subscription> => {
