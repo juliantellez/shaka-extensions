@@ -6,6 +6,7 @@ import { subscribeToState } from './subscriptions/subscribeToState';
 const DEFAULT_POLLING_INTERVAL = 1000
 
 interface PluginConfig {
+    enable: boolean;
     pollingInterval: number
     bufferingGoal: number
     bufferLow: {
@@ -52,6 +53,8 @@ class DynamicTimeouts implements PluginApi {
         this.player = player
         this.config = config
         this.pollingInterval = config.pollingInterval || DEFAULT_POLLING_INTERVAL
+        if(!config.enable) return
+
         this.init()
     }
 
@@ -92,18 +95,16 @@ class DynamicTimeouts implements PluginApi {
             case buffer >= this.config.bufferingGoal / 2:
                 this.state$.next({state: PluginState.BUFFER_BUILDING})
                 break;
-            case buffer < this.config.bufferingGoal / 2:
+            case buffer <= this.config.bufferingGoal / 2:
                 this.state$.next({state: PluginState.BUFFER_LOW})
                 break;
         }
     }
 
     private getBufferedRange = () => {
-        const videoElement = document.getElementsByTagName('video')[0];
-        const buffered = videoElement?.buffered;
-        const currentPosition = videoElement?.currentTime;
+        const {buffered, currentTime} = this.player.getMediaElement() as HTMLVideoElement
 
-        if (!buffered || !buffered.length) {
+        if (!currentTime || !buffered || !buffered.length) {
             return 0;
         }
 
@@ -115,13 +116,13 @@ class DynamicTimeouts implements PluginApi {
             });
         }
 
-        const range = bufferedRanges.find(({ start, end }) => currentPosition >= start && currentPosition < end);
+        const range = bufferedRanges.find(({ start, end }) => currentTime >= start && currentTime < end);
 
         if (!range) {
             return 0;
         }
 
-        return range.end - currentPosition;
+        return range.end - currentTime;
     }
 }
 
@@ -131,4 +132,5 @@ export {
     Subscriber,
     PluginState,
     PluginConfig,
+    PluginEvent,
 }
