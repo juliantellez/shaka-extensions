@@ -1,8 +1,7 @@
 import shaka from 'shaka-player/dist/shaka-player.compiled.debug';
+
 import { BehaviourSubject } from "./observable"
-import { subscribeToBufferBuilding } from "./subscriptions/subscribeToBufferBuilding";
-import { subscribeToBufferFull } from './subscriptions/subscribeToBufferFull';
-import { subscribeToBufferLow } from './subscriptions/subscribeToBufferLow';
+import { subscribeToState } from './subscriptions/subscribeToState';
 
 const DEFAULT_POLLING_INTERVAL = 1000
 
@@ -75,9 +74,7 @@ class DynamicTimeouts implements PluginApi {
 
     private createSubscriptions = (): Array<Subscription> => {
         return [
-            subscribeToBufferBuilding(this.player, this.config),
-            subscribeToBufferLow(this.player, this.config),
-            subscribeToBufferFull(this.player, this.config),
+            subscribeToState(this.player, this.config),
         ].map(s => this.state$.subscribe(s))
     }
 

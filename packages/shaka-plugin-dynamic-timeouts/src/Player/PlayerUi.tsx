@@ -33,7 +33,6 @@ const PlayerUi: React.FC<PlayerProps> = ({src}) => {
             }
         })
 
-        plugin.subscribe(console.log)
           if(!videoContainerRef.current || !uiContainerRef.current) {
             return 
           }
