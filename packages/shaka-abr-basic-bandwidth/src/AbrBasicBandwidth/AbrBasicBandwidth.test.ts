@@ -104,6 +104,17 @@ describe("AbrBasicBandwidth", () => {
         expect(variant).toEqual({bandwidth : 400})
     })
 
-    it("should hold a reference to the swit")
-// switchCallback test
+    it("should hold and destroy references to the switchCallback", () => {
+        const switchCallback = jest.fn()
+        const plugin = new AbrBasicBandwidth()
+
+        plugin.init(switchCallback)
+        plugin.enable()
+        plugin.segmentDownloaded(0,0)
+        expect(switchCallback).toHaveBeenCalledTimes(1)
+
+        plugin.stop()
+        plugin.segmentDownloaded(0,0)
+        expect(switchCallback).toHaveBeenCalledTimes(1)
+    })
 })

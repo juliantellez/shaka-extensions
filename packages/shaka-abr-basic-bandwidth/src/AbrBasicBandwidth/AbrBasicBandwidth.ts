@@ -15,7 +15,8 @@ interface AbrBasicBandwidthConfig {
 interface AbrBasicBandwidthState {
     isEnabled: boolean
     variants: Array<shaka.extern.Variant>
-    variantIndex: number 
+    variantIndex: number
+    bandwidthEstimate: number
 }
 
 /**
@@ -30,7 +31,8 @@ class AbrBasicBandwidth implements shaka.extern.AbrManager {
     private state$ = new BehaviourSubject<AbrBasicBandwidthState>({
         isEnabled: false,
         variants: [],
-        variantIndex: -1
+        variantIndex: -1,
+        bandwidthEstimate: 0,
     })
 
     constructor(config?: AbrBasicBandwidthConfig) {
@@ -39,37 +41,39 @@ class AbrBasicBandwidth implements shaka.extern.AbrManager {
         this.config = config
     }
 
-    configure(config: shaka.extern.AbrConfiguration): any {
+    private getCurrentVariant = (): shaka.extern.Variant => {
+        const {variants, variantIndex} = this.state$.getValue()
+        return variants[variantIndex]
     }
 
-    init(switchCallback: shaka.extern.AbrManager.SwitchCallback): any {
+    public configure = (config: shaka.extern.AbrConfiguration): void => {
+        // notImplemented
+    }
+
+    public playbackRateChanged = (rate: unknown): void => {
+        // notImplemented
+    }
+
+    public init = (switchCallback: shaka.extern.AbrManager.SwitchCallback): void => {
         this.switchCallback = switchCallback
     }
 
-    getBandwidthEstimate(): number {
+    public getBandwidthEstimate = (): number => {
+        const {bandwidthEstimate} = this.state$.getValue()
+        return bandwidthEstimate
     }
 
-
-    playbackRateChanged(rate: unknown): any {
-    }
-
-    segmentDownloaded(deltaTimeMs: unknown, numBytes: unknown): any {
+    public segmentDownloaded = (deltaTimeMs: unknown, numBytes: unknown): any => {
         const {isEnabled} = this.state$.getValue()
         if(!isEnabled || !this.switchCallback) return
 
         this.switchCallback(this.getCurrentVariant())
     }
 
-    private getCurrentVariant(): shaka.extern.Variant {
-        const {variants, variantIndex} = this.state$.getValue()
-        return variants[variantIndex]
-    }
-
     /*
      * Chooses one variant to switch to. Called by the Player.
      */
-    public chooseVariant(): shaka.extern.Variant {
-        console.log("@@@chooseVariant@@@@@@@@@@@@@@")
+    public chooseVariant = (): shaka.extern.Variant => {
         return this.getCurrentVariant()
     }
 
@@ -79,8 +83,7 @@ class AbrBasicBandwidth implements shaka.extern.AbrManager {
      * 
      * Updates the variats collection
      */
-    public setVariants(variants: Array<shaka.extern.Variant>): void {
-        console.log("@@@setVariants", variants)
+    public setVariants = (variants: Array<shaka.extern.Variant>): void => {
         const descendingVariants = sortVariantsDescending(
             filterVariants(variants, this.config)
         )
@@ -92,36 +95,36 @@ class AbrBasicBandwidth implements shaka.extern.AbrManager {
         })
     }
 
-    public setMediaElement(mediaElement: HTMLVideoElement): void {
+    public setMediaElement= (mediaElement: HTMLVideoElement): void => {
         this.mediaElement = mediaElement
     }
 
-    public setState(state: AbrBasicBandwidthState) {
+    public setState = (state: Partial<AbrBasicBandwidthState>) => {
         this.state$.next({
             ...this.state$.getValue(),
             ...state
         })
     }
 
-    public getState() {
+    public getState=() => {
         return this.state$.getValue()
     }
 
-    public enable(): void {
+    public enable=(): void => {
         this.state$.next({
             ...this.state$.getValue(),
             isEnabled: true,
         })
     }
 
-    public disable(): void {
+    public disable= (): void => {
         this.state$.next({
             ...this.state$.getValue(),
             isEnabled: false,
         })
     }
 
-    public stop(): void {
+    public stop=(): void => {
         this.mediaElement = null
         this.switchCallback= null
         this.state$.next({
@@ -131,8 +134,9 @@ class AbrBasicBandwidth implements shaka.extern.AbrManager {
     }
 }
 
-const isBetween = (input?: number, ceiling: number, floor: number) => {
+const isBetween = (ceiling: number, floor: number, input?: number, ) => {
     if(!input) return false
+
     return (input <= ceiling && input >= floor)
 }
 
@@ -145,10 +149,10 @@ const filterVariants = (variants: Array<shaka.extern.Variant>, config?: AbrBasic
         const pixels = (height && width) ? height * width : 0;
 
         return (
-            isBetween(variant.bandwidth, config.bandwidthMax, config.bandwidthMin) &&
-            isBetween(width, config.widthMax, config.widthMin) &&
-            isBetween(height, config.heightMax, config.heightMin) &&
-            isBetween(pixels, config.pixelsMax, config.pixelsMin)
+            isBetween(config.bandwidthMax, config.bandwidthMin, variant.bandwidth) &&
+            isBetween(config.widthMax, config.widthMin, width) &&
+            isBetween(config.heightMax, config.heightMin, height) &&
+            isBetween(config.pixelsMax, config.pixelsMin, pixels)
         )
     })
 }
