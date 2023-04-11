@@ -16,10 +16,12 @@ const PlayerUi: React.FC<PlayerProps> = ({src}) => {
     useEffect(() => {
         
         const player = new shaka.Player(videoContainerRef.current);
-        // https://shaka-player-demo.appspot.com/docs/api/tutorial-config.html#:~:text=Object%0A%20%20%20%20%20%20%20switchInterval%3A%208-,abrfactory,-%3A%20Function%0A%20%20%20%20%20drm%3A%20Object
+        const abrBasic = new AbrBasicBandwidth()
+        
         // @ts-expect-error partial
         const config: shaka.extern.PlayerConfiguration = {
-            abrFactory: () => new AbrBasicBandwidth()
+            // https://shaka-player-demo.appspot.com/docs/api/tutorial-config.html#:~:text=Object%0A%20%20%20%20%20%20%20switchInterval%3A%208-,abrfactory,-%3A%20Function%0A%20%20%20%20%20drm%3A%20Object
+            abrFactory: () => abrBasic
         }
 
         player.configure(config)
