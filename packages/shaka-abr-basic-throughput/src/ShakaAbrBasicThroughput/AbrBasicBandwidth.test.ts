@@ -1,8 +1,8 @@
-import { AbrBasicBandwidth, AbrBasicBandwidthConfig, filterVariants, sortVariantsDescending } from "./AbrBasicBandwidth"
+import { ShakaAbrBasicThroughput, ShakaAbrBasicThroughputConfig, filterVariants, sortVariantsDescending } from "./AbrBasicBandwidth"
 
 describe("AbrBasicBandwidth", () => {
     it("should enable and disable plugin", () => {
-        const plugin = new AbrBasicBandwidth()
+        const plugin = new ShakaAbrBasicThroughput()
         plugin.enable()
         expect(plugin.getState().isEnabled).toBe(true)
 
@@ -17,7 +17,7 @@ describe("AbrBasicBandwidth", () => {
     })
 
     it("should set and remove a media Element", () => {
-        const plugin = new AbrBasicBandwidth()
+        const plugin = new ShakaAbrBasicThroughput()
         const mediaElement = {} as HTMLVideoElement
         plugin.setMediaElement(mediaElement)
 
@@ -70,7 +70,7 @@ describe("AbrBasicBandwidth", () => {
         const noConfig = filterVariants(variants)
         expect(noConfig).toBe(variants)
 
-        const config: AbrBasicBandwidthConfig = {
+        const config: ShakaAbrBasicThroughputConfig = {
             bandwidthMax: 400,
             bandwidthMin: 100,
             heightMax: 400,
@@ -86,7 +86,7 @@ describe("AbrBasicBandwidth", () => {
     })
 
     it("should choose initial variant", () => {
-        const plugin = new AbrBasicBandwidth()
+        const plugin = new ShakaAbrBasicThroughput()
         const variants: Array<shaka.extern.Variant> = [
             // @ts-expect-error partial implementation
             {bandwidth : 100},
@@ -106,7 +106,7 @@ describe("AbrBasicBandwidth", () => {
 
     it("should hold and destroy references to the switchCallback", () => {
         const switchCallback = jest.fn()
-        const plugin = new AbrBasicBandwidth()
+        const plugin = new ShakaAbrBasicThroughput()
 
         plugin.init(switchCallback)
         plugin.enable()

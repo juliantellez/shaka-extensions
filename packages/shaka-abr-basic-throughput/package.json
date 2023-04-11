@@ -72,6 +72,6 @@
     "react-dom": "^18.2.0",
     "shaka-player": "^4.3.5"
   },
-  "name": "shaka-abr-basic-bandwidth",
+  "name": "shaka-abr-basic-throughput",
   "version": "0.0.0"
 }

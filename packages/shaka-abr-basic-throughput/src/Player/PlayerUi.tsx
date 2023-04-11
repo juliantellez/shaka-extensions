@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import shaka from 'shaka-player/dist/shaka-player.ui.debug';
 import "shaka-player/dist/controls.css?raw"
-import { AbrBasicBandwidth } from '../AbrBasicBandwidth/AbrBasicBandwidth';
+import ShakaAbrBasicThroughput from '../ShakaAbrBasicThroughput';
 
 interface PlayerProps {
     src: string
@@ -16,7 +16,7 @@ const PlayerUi: React.FC<PlayerProps> = ({src}) => {
     useEffect(() => {
         
         const player = new shaka.Player(videoContainerRef.current);
-        const abrBasic = new AbrBasicBandwidth()
+        const abrBasic = new ShakaAbrBasicThroughput()
         
         // @ts-expect-error partial
         const config: shaka.extern.PlayerConfiguration = {

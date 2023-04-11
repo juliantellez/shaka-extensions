@@ -1,7 +1,7 @@
 import shaka from 'shaka-player/dist/shaka-player.compiled.debug';
-import { BehaviourSubject } from './observable';
+import { BehaviourSubject } from '../Utils/observable';
 
-interface AbrBasicBandwidthConfig {
+interface ShakaAbrBasicThroughputConfig {
     bandwidthMax: number;
     bandwidthMin: number;
     pixelsMax: number;
@@ -12,7 +12,7 @@ interface AbrBasicBandwidthConfig {
     widthMin: number;
 }
 
-interface AbrBasicBandwidthState {
+interface ShakaAbrBasicThroughputState {
     isEnabled: boolean
     variants: Array<shaka.extern.Variant>
     variantIndex: number
@@ -20,22 +20,20 @@ interface AbrBasicBandwidthState {
 }
 
 /**
- *  AbrBasicBandwidth
- *  takes the estimated bandwidth and
- * selects the highest bitrate possiblebelow that bitrate
+ *  ShakaAbrBasicThroughput
  */
-class AbrBasicBandwidth implements shaka.extern.AbrManager {
+class ShakaAbrBasicThroughput implements shaka.extern.AbrManager {
     private mediaElement: HTMLVideoElement | null
-    private config?: AbrBasicBandwidthConfig
+    private config?: ShakaAbrBasicThroughputConfig
     private switchCallback: shaka.extern.AbrManager.SwitchCallback | null
-    private state$ = new BehaviourSubject<AbrBasicBandwidthState>({
+    private state$ = new BehaviourSubject<ShakaAbrBasicThroughputState>({
         isEnabled: false,
         variants: [],
         variantIndex: -1,
         bandwidthEstimate: 0,
     })
 
-    constructor(config?: AbrBasicBandwidthConfig) {
+    constructor(config?: ShakaAbrBasicThroughputConfig) {
         this.mediaElement = null
         this.switchCallback =  null
         this.config = config
@@ -99,7 +97,7 @@ class AbrBasicBandwidth implements shaka.extern.AbrManager {
         this.mediaElement = mediaElement
     }
 
-    public setState = (state: Partial<AbrBasicBandwidthState>) => {
+    public setState = (state: Partial<ShakaAbrBasicThroughputState>) => {
         this.state$.next({
             ...this.state$.getValue(),
             ...state
@@ -140,7 +138,7 @@ const isBetween = (ceiling: number, floor: number, input?: number, ) => {
     return (input <= ceiling && input >= floor)
 }
 
-const filterVariants = (variants: Array<shaka.extern.Variant>, config?: AbrBasicBandwidthConfig):Array<shaka.extern.Variant> => {
+const filterVariants = (variants: Array<shaka.extern.Variant>, config?: ShakaAbrBasicThroughputConfig):Array<shaka.extern.Variant> => {
     if(!config) return variants
 
     return variants.filter(variant => {
@@ -161,4 +159,4 @@ const sortVariantsDescending = (variants: Array<shaka.extern.Variant>):Array<sha
     return variants.slice().sort((a, b) => b.bandwidth - a.bandwidth)
 }
 
-export {AbrBasicBandwidth, sortVariantsDescending, filterVariants, AbrBasicBandwidthConfig}
+export {ShakaAbrBasicThroughput, sortVariantsDescending, filterVariants, ShakaAbrBasicThroughputConfig}

@@ -1,0 +1,1 @@
+export {ShakaAbrBasicThroughput as default} from "./AbrBasicBandwidth"
