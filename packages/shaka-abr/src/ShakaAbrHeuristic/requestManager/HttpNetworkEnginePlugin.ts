@@ -4,18 +4,7 @@ import { AbortableOperation } from './AbortableOperation';
 import { HttpRequestInterceptor, HttpRequestInterceptorEvent } from './httpRequestInterceptor';
 import { RequestManager } from './RequestManager';
 import { Subscriber } from '../../Utils/observable';
-
-class Counter {
-    public value = 0
-
-    increment(){
-        this.value += 1
-        return this.value
-    }
-    reset() {
-        this.value = 0
-    }
-}
+import { Counter } from '../utils/Counter';
 
 /**
  * HttpNetworkEnginePlugin:

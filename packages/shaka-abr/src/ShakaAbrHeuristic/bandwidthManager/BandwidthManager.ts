@@ -1,6 +1,7 @@
 import shaka from 'shaka-player/dist/shaka-player.ui.debug';
 
 import { HttpRequestInterceptorEvent } from '../requestManager/httpRequestInterceptor';
+import { Counter } from '../utils/Counter';
 
 
 interface Request {
@@ -57,30 +58,6 @@ const defaultBandwidthManagerConfig: BandwidthManagerConfig = {
     samplesSize: 3,
     bandwidthEstimateBytes: 500 * 1000, // 500kbs,
     intervalMs: 500
-}
-
-class Counter {
-    private total = 0
-
-    get() {
-        return this.total
-    }
-
-    set(value: number) {
-        this.total = value
-    }
-
-    add(summand: number) {
-        this.total += summand
-    }
-
-    substract(term: number) {
-        this.total -= term
-    }
-
-    reset() {
-        this.set(0)
-    }
 }
 
 /**
