@@ -1,13 +1,11 @@
 import shaka from 'shaka-player/dist/shaka-player.ui.debug';
 
-// public defaultBandwidthEstimate = 500 * 1000;
-//     public rollingAverageHistorySize = 3;
-//     public thresholdSegmentSize = 35000;
-//     public thresholdSegmentDownloadDurationMs = 50;
+import { HttpRequestInterceptorEvent } from '../requestManager/httpRequestInterceptor';
+
 
 interface Request {
-    startTime: number;
-    totalBytes: number;
+    startTimeMs: number;
+    totalBytes: Counter;
     hasFirstByte: boolean;
 }
 
@@ -22,14 +20,14 @@ interface BandwidthManagerConfig {
     /**
      * minTotalBytes:
      * anything below this threshold will be disregarded
-     * eg. ignore if a request body response is too small
+     * eg. ignore if a request body response size is too small
      */
     minTotalBytes: number
 
     /**
      * minDurationMs:
      * anything below this threshold will be disregarded
-     * eg. default to minimum Duration if the response was too eager
+     * eg. default to minimum Duration if the response time was too eager/fast
      */
     minDurationMs: number
 
@@ -45,21 +43,43 @@ interface BandwidthManagerConfig {
      * Initial estimation
      */
     bandwidthEstimateBytes: number
+
+    /**
+     * intervalMs:
+     * regulates how often bandwidth estimations are issued
+     */
+    intervalMs: number
 }
 
-class Bytes {
-    private bytes = 0
+const defaultBandwidthManagerConfig: BandwidthManagerConfig = {
+    minTotalBytes: 35000,
+    minDurationMs: 50,
+    samplesSize: 3,
+    bandwidthEstimateBytes: 500 * 1000, // 500kbs,
+    intervalMs: 500
+}
 
-    getBytes() {
-        return this.bytes
+class Counter {
+    private total = 0
+
+    get() {
+        return this.total
     }
 
-    addBytes(bytes: number) {
-        this.bytes += bytes
+    set(value: number) {
+        this.total = value
     }
 
-    restet() {
-        this.bytes = 0
+    add(summand: number) {
+        this.total += summand
+    }
+
+    substract(term: number) {
+        this.total -= term
+    }
+
+    reset() {
+        this.set(0)
     }
 }
 
@@ -73,35 +93,64 @@ class Bytes {
 class BandwidthManager {
     private requests: Record<number, Request> = {}
     private samples: Array<number> = []
-    private downloadedBytesTotal = new Bytes()
-    private currentActiveRequests: number = 0
+    private downloadedBytesTotal = new Counter()
+    private currentActiveRequests = new Counter()
     private useNetworkEstimate: boolean = false
     private config: BandwidthManagerConfig
-    private bandwidthEstimateBytes: number
-    private previousBandwidthUpdateTime = Date.now()
+    private bandwidthEstimateKbps: number
+    private previousBandwidthUpdateTimeMs = Date.now()
+    private intervalId: number
 
-    constructor(config: BandwidthManagerConfig = {
-        minTotalBytes: 35000,
-        minDurationMs: 50,
-        samplesSize: 3,
-        bandwidthEstimateBytes: 500 * 1000 // 500kbs
-    }) {
+    constructor(config: BandwidthManagerConfig = defaultBandwidthManagerConfig) {
         this.config = config
-        this.bandwidthEstimateBytes = config.bandwidthEstimateBytes
+        this.bandwidthEstimateKbps = config.bandwidthEstimateBytes
+        this.intervalId = this.createInterval(config.intervalMs)
+    }
+
+    private createInterval(intervalMs: number): number {
+        return window.setInterval(() => {
+            this.updateBandwidthEstimate()
+        }, intervalMs)
+    }
+
+
+    private clearInterval() {
+        window.clearInterval(this.intervalId)
+    }
+
+    /**
+     * TODO needs reviewing
+     */
+    private createBandwidthEstimate (bytes: number, startTimeMs: number, finishTimeMs: number) {
+        const durationMs = Math.max(this.config.minDurationMs, finishTimeMs - startTimeMs)
+        const bandwidthEstimate = (bytes * 8000) / durationMs;
+        return bandwidthEstimate
+    }
+
+    private pushBandwidthEstimateSample(bandwidthEstimate: number) {
+        if(!bandwidthEstimate){
+            return
+        }
+
+        this.samples.push(bandwidthEstimate)
+
+        if(this.samples.length > this.config.samplesSize) {
+            this.samples = this.samples.slice(-this.config.samplesSize)
+        }
     }
 
     /**
      * onRequestOpen
      * Registers an incoming request
      */
-    public setRequestOpen(requestId: number, requestType: shaka.net.NetworkingEngine.RequestType): Request | null {
+    public onRequestOpen(requestId: number, requestType: shaka.net.NetworkingEngine.RequestType): Request | null {
         if(shaka.net.NetworkingEngine.RequestType.SEGMENT !== requestType) {
             return null
         }
         
         const request: Request = {
-            startTime: Date.now(),
-            totalBytes: 0,
+            startTimeMs: Date.now(),
+            totalBytes: new Counter(),
             hasFirstByte: false
         }
 
@@ -110,10 +159,10 @@ class BandwidthManager {
     }
 
     /**
-     * setRequestFirstByte
+     * onRequestFirstByte
      * TTFB (Time to firstByte) flag
      */
-    public setRequestFirstByte(requestId: number): Request | null {
+    public onRequestFirstByte(requestId: number): Request | null {
         if(!(requestId in this.requests)) {
             return null
         }
@@ -121,25 +170,25 @@ class BandwidthManager {
         const request = this.requests[requestId]
         request.hasFirstByte = true
 
-        this.currentActiveRequests += 1
+        this.currentActiveRequests.add(1)
         return request
     }
 
-    public setRequestProgress(requestId: number, requestSizeBytes: number) : Request | null{
+    public onRequestProgress(requestId: number, requestSizeBytes: number) : Request | null{
         if(!(requestId in this.requests)) {
             return null
         }
 
         const request = this.requests[requestId]
-        const bytesDelta = requestSizeBytes - request.totalBytes
+        const bytesDelta = requestSizeBytes - request.totalBytes.get()
 
-        request.totalBytes = requestSizeBytes
-        this.downloadedBytesTotal.addBytes(bytesDelta)
+        request.totalBytes.set(requestSizeBytes)
+        this.downloadedBytesTotal.add(bytesDelta)
 
         return request
     }
 
-    public setRequestClose(requestId: number, responseEvent: ResponseEvent): Request | null {
+    public onRequestClose(requestId: number, eventType: HttpRequestInterceptorEvent["type"]): Request | null {
         if(!(requestId in this.requests)) {
             return null
         }
@@ -147,19 +196,20 @@ class BandwidthManager {
         const request = this.requests[requestId]
 
         if(
-            responseEvent === ResponseEvent.LOAD &&
-            request.totalBytes >= this.config.minTotalBytes
+            eventType === "REQUEST_LOAD" &&
+            request.totalBytes.get() >= this.config.minTotalBytes
             ) {
-                const finsihTime = Date.now()
-                const duration = Math.max(this.config.minDurationMs, finsihTime - request.startTime)
-                const bandwidthEstimate = (request.totalBytes * 8000) / duration
-                this.setBandwidthEstimate(bandwidthEstimate)
+
+                const finishTimeMs = Date.now()
+                const bandwidthEstimate = this.createBandwidthEstimate(request.totalBytes.get(), request.startTimeMs, finishTimeMs)
+                this.pushBandwidthEstimateSample(bandwidthEstimate)
         }
 
-        if(request.hasFirstByte) {
-            this.currentActiveRequests -=1
 
-            if(this.currentActiveRequests === 0) {
+        if(request.hasFirstByte) {
+            // TODO theres a bug here
+            this.currentActiveRequests.substract(1)
+            if(this.currentActiveRequests.get() === 0) {
                 this.useNetworkEstimate = false
             }
         }
@@ -168,36 +218,35 @@ class BandwidthManager {
         return request
     }
 
-    private setBandwidthEstimate(bandwidthEstimate: number) {
-        this.samples.push(bandwidthEstimate)
-
-        if(this.samples.length > this.config.samplesSize) {
-            this.samples = this.samples.slice(-this.config.samplesSize)
-        }
+    public setBandwidthEstimate(bandwidthEstimateBytes: number): void {
+        this.bandwidthEstimateKbps = bandwidthEstimateBytes
     }
 
     public getBandwidthEstimate(): number {
-        return this.bandwidthEstimateBytes
+        return this.bandwidthEstimateKbps
     }
 
     public updateBandwidthEstimate(): void {
-        const now = Date.now()
+        const nowMs = Date.now()
 
         if(this.useNetworkEstimate) {
-            const duration = now - this.previousBandwidthUpdateTime
-            const bandwidthEstimate = (8 * 1000 * this.downloadedBytesTotal.getBytes()) / duration
-            this.setBandwidthEstimate(bandwidthEstimate)
+            const bandwidthEstimate = this.createBandwidthEstimate(this.downloadedBytesTotal.get(), this.previousBandwidthUpdateTimeMs, nowMs)
+            this.pushBandwidthEstimateSample(bandwidthEstimate)
         }
 
         if(this.samples.length > 0) {
             const sum = this.samples.reduce((total, value) => total + value, 0)
             const average = sum / this.samples.length
-            this.bandwidthEstimateBytes = average
+            this.bandwidthEstimateKbps = Math.floor(average)
         }
 
-        this.downloadedBytesTotal.restet()
-        this.previousBandwidthUpdateTime = now
-        this.useNetworkEstimate = this.currentActiveRequests > 0
+        this.downloadedBytesTotal.reset()
+        this.previousBandwidthUpdateTimeMs = nowMs
+        this.useNetworkEstimate = this.currentActiveRequests.get() > 0
+    }
+
+    public tearDown() {
+        this.clearInterval()
     }
 }
 

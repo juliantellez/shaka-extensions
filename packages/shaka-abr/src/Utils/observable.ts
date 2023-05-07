@@ -1,4 +1,4 @@
-type Subscriber<D> = (data: D) => void
+export type Subscriber<D> = (data: D) => void
 type Subscription = () => void
 
 interface BehaviourSubectObservable<Data> {
