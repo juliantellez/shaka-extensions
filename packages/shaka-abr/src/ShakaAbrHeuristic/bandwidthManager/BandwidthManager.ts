@@ -2,6 +2,7 @@ import shaka from 'shaka-player/dist/shaka-player.ui.debug';
 
 import { HttpRequestInterceptorEvent } from '../requestManager/httpRequestInterceptor';
 import { Counter } from '../utils/Counter';
+import { BehaviourSubject, Subscriber } from '../../Utils/observable';
 
 
 interface Request {
@@ -43,7 +44,7 @@ interface BandwidthManagerConfig {
      * bandwidthEstimateBytes:
      * Initial estimation
      */
-    bandwidthEstimateBytes: number
+    bandwidthEstimateBps: number
 
     /**
      * intervalMs:
@@ -56,8 +57,12 @@ const defaultBandwidthManagerConfig: BandwidthManagerConfig = {
     minTotalBytes: 35000,
     minDurationMs: 50,
     samplesSize: 3,
-    bandwidthEstimateBytes: 500 * 1000, // 500kbs,
+    bandwidthEstimateBps: 500 * 1000, // 500kbs,
     intervalMs: 500
+}
+
+interface BandwidthManagerState {
+    bandwidthEstimateBps: number
 }
 
 /**
@@ -74,13 +79,15 @@ class BandwidthManager {
     private currentActiveRequests = new Counter()
     private useNetworkEstimate: boolean = false
     private config: BandwidthManagerConfig
-    private bandwidthEstimateKbps: number
     private previousBandwidthUpdateTimeMs = Date.now()
     private intervalId: number
+    private state$ = new BehaviourSubject<BandwidthManagerState>({
+        bandwidthEstimateBps: 0,
+    })
 
     constructor(config: BandwidthManagerConfig = defaultBandwidthManagerConfig) {
         this.config = config
-        this.bandwidthEstimateKbps = config.bandwidthEstimateBytes
+        this.state$.next({bandwidthEstimateBps: config.bandwidthEstimateBps})
         this.intervalId = this.createInterval(config.intervalMs)
     }
 
@@ -89,7 +96,6 @@ class BandwidthManager {
             this.updateBandwidthEstimate()
         }, intervalMs)
     }
-
 
     private clearInterval() {
         window.clearInterval(this.intervalId)
@@ -196,11 +202,11 @@ class BandwidthManager {
     }
 
     public setBandwidthEstimate(bandwidthEstimateBytes: number): void {
-        this.bandwidthEstimateKbps = bandwidthEstimateBytes
+        this.state$.next({bandwidthEstimateBps: bandwidthEstimateBytes })
     }
 
     public getBandwidthEstimate(): number {
-        return this.bandwidthEstimateKbps
+        return this.state$.getValue().bandwidthEstimateBps
     }
 
     public updateBandwidthEstimate(): void {
@@ -214,12 +220,16 @@ class BandwidthManager {
         if(this.samples.length > 0) {
             const sum = this.samples.reduce((total, value) => total + value, 0)
             const average = sum / this.samples.length
-            this.bandwidthEstimateKbps = Math.floor(average)
+            this.state$.next({bandwidthEstimateBps: Math.floor(average)})
         }
 
         this.downloadedBytesTotal.reset()
         this.previousBandwidthUpdateTimeMs = nowMs
         this.useNetworkEstimate = this.currentActiveRequests.get() > 0
+    }
+
+    public subscribe(subscriber: Subscriber<BandwidthManagerState>) {
+        return this.state$.subscribe(subscriber)
     }
 
     public tearDown() {

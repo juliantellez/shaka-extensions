@@ -1,3 +1,5 @@
+import shaka from 'shaka-player/dist/shaka-player.ui.debug';
+
 import { Counter } from "../utils/Counter"
 
 interface RetryManagerConfig {
@@ -29,7 +31,11 @@ class RetryManager {
         this.config = config
     }
 
-    public onFailure(retryCb: () => void) {
+    public onFailure(retryCb: () => void, error: shaka.util.Error) {
+        if(!this.isNetworkErrorRecoverable(error)) {
+            return
+        }
+
         if(this.timeoutId !== 0) {
             return
         }
@@ -63,6 +69,23 @@ class RetryManager {
 
     private clearTimeout(timeoutId: number) {
         clearTimeout(timeoutId)
+    }
+
+    private isNetworkErrorRecoverable(error: shaka.extern.Error): boolean {
+        if(error.category !== shaka.util.Error.Category.NETWORK) {
+            return false
+        }
+
+        if ([
+            shaka.util.Error.Code.OPERATION_ABORTED,
+            shaka.util.Error.Code.BAD_HTTP_STATUS,
+            shaka.util.Error.Code.HTTP_ERROR,
+            shaka.util.Error.Code.TIMEOUT,
+        ].includes(error.code)) {
+            return true
+        }
+
+        return false
     }
 }
 

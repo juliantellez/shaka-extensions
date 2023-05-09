@@ -18,6 +18,7 @@ class HttpNetworkEnginePlugin {
 
     constructor(requestManager: RequestManager) {
         this.plugin = this.create(requestManager.subscriber)
+        this.register()
     }
 
     private create(subscriber: Subscriber<HttpRequestInterceptorEvent>) {
@@ -44,7 +45,7 @@ class HttpNetworkEnginePlugin {
         return networkEnginePlugin
     }
 
-    public register() {
+    private register() {
         shaka.net.NetworkingEngine.registerScheme("http", this.plugin)
         shaka.net.NetworkingEngine.registerScheme("https", this.plugin)
     }

@@ -65,10 +65,14 @@ class RequestManager {
         }
     }
 
-    private createTimeout(event: HttpRequestInterceptorEvent, timeoutMs: number): number {
+    private createTimeout(eventReference: HttpRequestInterceptorEvent["reference"], timeoutMs: number): number {
         return window?.setTimeout(() => {
-            event.reference.abort()
+            eventReference.abort()
         }, timeoutMs)
+    }
+
+    private clearTimeout(timeoutId: number) {
+        clearTimeout(timeoutId)
     }
 
     private onRequestOpen(event: HttpRequestInterceptorEvent) {
@@ -81,8 +85,8 @@ class RequestManager {
             metadata: {
                 startTime: Date.now()
             },
-            timeoutFirstByteId: this.createTimeout(event, this.config.timeoutFirstByteMs),
-            timeoutLoadId: this.createTimeout(event, this.config.timeoutLoadMs),
+            timeoutFirstByteId: this.createTimeout(event.reference, this.config.timeoutFirstByteMs),
+            timeoutLoadId: this.createTimeout(event.reference, this.config.timeoutLoadMs),
         }
 
         this.requests[event.reference.id] = currentRequest
@@ -94,7 +98,7 @@ class RequestManager {
             return
         }
 
-        clearTimeout(request.timeoutFirstByteId)
+        this.clearTimeout(request.timeoutFirstByteId)
         this.bandwidthManager.onRequestFirstByte(event.reference.id)
     }
 
@@ -104,10 +108,54 @@ class RequestManager {
             return
         }
 
-        clearTimeout(request.timeoutFirstByteId)
-        clearTimeout(request.timeoutLoadId)
+        this.clearTimeout(request.timeoutFirstByteId)
+        this.clearTimeout(request.timeoutLoadId)
 
         delete this.requests[event.reference.id]
+    }
+
+    public timeoutAllRequest() {
+        Object.values(this.requests).forEach(request => {
+            return request.reference.timeout()
+        })
+    }
+
+    public setTimeoutFirstByte(timeoutMs: number) {
+        if(this.config.timeoutFirstByteMs === timeoutMs) {
+            return
+        }
+
+        this.config.timeoutFirstByteMs = timeoutMs
+        const now = Date.now()
+        Object.values(this.requests).forEach(request => {
+            if(!request.timeoutFirstByteId) {
+                return
+            }
+            this.clearTimeout(request.timeoutFirstByteId)
+            const elapsed = now - request.metadata.startTime
+            const remaining = Math.max(0, timeoutMs - elapsed)
+            request.timeoutFirstByteId = this.createTimeout(request.reference, remaining)
+        })
+    }
+
+    public setTimeoutLoad(timeoutMs: number) {
+        if(this.config.timeoutLoadMs === timeoutMs) {
+            return
+        }
+
+        this.config.timeoutLoadMs = timeoutMs
+        const now = Date.now()
+
+        Object.values(this.requests).forEach(request => {
+            if(!request.timeoutLoadId) {
+                return
+            }
+
+            this.clearTimeout(request.timeoutLoadId)
+            const elapsed = now - request.metadata.startTime
+            const remaining = Math.max(0, timeoutMs - elapsed)
+            request.timeoutLoadId = this.createTimeout(request.reference, remaining)
+        })
     }
 }
 

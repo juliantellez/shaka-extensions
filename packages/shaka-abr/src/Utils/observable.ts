@@ -1,5 +1,5 @@
 export type Subscriber<D> = (data: D) => void
-type Subscription = () => void
+export type Subscription = () => void
 
 interface BehaviourSubectObservable<Data> {
     getValue(): Data
@@ -32,6 +32,7 @@ class BehaviourSubject<Data> implements BehaviourSubectObservable<Data> {
 
     public next(data: Data): void {
         this.state = data
+        
         this.subscriptions.forEach(subscription => subscription(data))
     }
 }
